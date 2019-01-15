@@ -26,11 +26,11 @@ class DynamicMemoryCell(tf.contrib.rnn.RNNCell):
                  keys,
                  initializer=None,
                  recurrent_initializer=None,
-                 activation=tf.nn.relu,):
-        self._num_blocks = num_blocks # M
-        self._num_units_per_block = num_units_per_block # d
+                 activation=tf.nn.relu, ):
+        self._num_blocks = num_blocks  # M
+        self._num_units_per_block = num_units_per_block  # d
         self._keys = keys
-        self._activation = activation # \phi
+        self._activation = activation  # \phi
         self._initializer = initializer
         self._recurrent_initializer = recurrent_initializer
 
@@ -111,7 +111,7 @@ class DynamicMemoryCell(tf.contrib.rnn.RNNCell):
 
             next_states = []
             next_a_states = []
-            for j, state_j in enumerate(state): # Hidden State (j)
+            for j, state_j in enumerate(state):  # Hidden State (j)
                 key_j = tf.expand_dims(self._keys[j], axis=0)
                 candidate_j = self.get_candidate(state_j, key_j, inputs, U, V, W, U_bias)
 
@@ -120,28 +120,28 @@ class DynamicMemoryCell(tf.contrib.rnn.RNNCell):
                     reuse = True
                 with tf.variable_scope("entnet_gru", reuse=reuse) as gru_scope:
                     w_ru = tf.get_variable(
-                        "w_ru", 
+                        "w_ru",
                         [self._num_units_per_block * 2, self._num_units_per_block * 2]
                     )
                     b_ru = tf.get_variable(
                         "b_ru", [self._num_units_per_block * 2],
                         initializer=init_ops.constant_initializer(1.0))
                     w_c = tf.get_variable("w_c",
-                        [self._num_units_per_block * 2, self._num_units_per_block]
-                    )
+                                          [self._num_units_per_block * 2, self._num_units_per_block]
+                                          )
                     b_c = tf.get_variable(
                         "b_c", [self._num_units_per_block],
                         initializer=init_ops.constant_initializer(0.0))
                     _gru_block_cell = gen_gru_ops.gru_block_cell  # pylint: disable=invalid-name
                     _, _, _, new_a = _gru_block_cell(
-                        x=candidate_j, h_prev=state_a[j], 
+                        x=candidate_j, h_prev=state_a[j],
                         w_ru=w_ru, w_c=w_c, b_ru=b_ru, b_c=b_c)
-                    
+
                     v_a = tf.get_variable(
                         "v_a", [self._num_units_per_block],
                         initializer=self._initializer,
                     )
-                
+
                 next_a_states.append(new_a)
 
                 gate_j = self.get_gate(state_j, key_j, inputs, v_a, new_a)
@@ -168,6 +168,7 @@ class DynamicMemoryCell(tf.contrib.rnn.RNNCell):
             state_a_next = tf.concat(next_a_states, axis=1)
             return state_next, tf.concat(values=[state_next, state_a_next], axis=1)
 
+
 def zero_nil_slot(t, name=None):
     """
     Overwrites the nil_slot (first row) of the input Tensor with zeros.
@@ -183,6 +184,7 @@ def zero_nil_slot(t, name=None):
             axis=0, values=[z, tf.slice(t, [1, 0], [-1, -1])], name=name
         )
 
+
 def prelu(features, alpha, scope=None):
     """
     Implementation of [Parametric ReLU](https://arxiv.org/abs/1502.01852) borrowed from Keras.
@@ -194,25 +196,25 @@ def prelu(features, alpha, scope=None):
 
 
 class Delayed_EntNet_Sentihood(object):
-    def __init__(self, 
-        batch_size, vocab_size, target_len, aspect_len, sentence_len, 
-        answer_size, embedding_size,
-        weight_tying="adj",
-        hops=3,
-        embedding_mat=None,
-        update_embeddings=False,
-        softmax_mask=True,
-        max_grad_norm=5.0,
-        n_keys=6,
-        tied_keys=[],
-        l2_final_layer=0.0,
-        initializer=tf.contrib.layers.xavier_initializer(),
-        optimizer=tf.train.AdamOptimizer(learning_rate=1e-2),
-        global_step=None,
-        session=None,
-        name='Delayed_EntNet_Sentihood'):
+    def __init__(self,
+                 batch_size, vocab_size, target_len, aspect_len, sentence_len,
+                 answer_size, embedding_size,
+                 weight_tying="adj",
+                 hops=3,
+                 embedding_mat=None,
+                 update_embeddings=False,
+                 softmax_mask=True,
+                 max_grad_norm=5.0,
+                 n_keys=6,
+                 tied_keys=[],
+                 l2_final_layer=0.0,
+                 initializer=tf.contrib.layers.xavier_initializer(),
+                 optimizer=tf.train.AdamOptimizer(learning_rate=1e-2),
+                 global_step=None,
+                 session=None,
+                 name='Delayed_EntNet_Sentihood'):
 
-        print name
+        print(name)
 
         self._batch_size = batch_size
         self._vocab_size = vocab_size
@@ -238,7 +240,7 @@ class Delayed_EntNet_Sentihood(object):
         self._build_vars()
 
         logits = self._inference_adj(
-            self._sentences, 
+            self._sentences,
             self._targets,
             self._aspects,
             self._entnet_input_keep_prob,
@@ -246,9 +248,9 @@ class Delayed_EntNet_Sentihood(object):
             self._entnet_state_keep_prob,
             self._final_layer_keep_prob,
         )
-        
+
         cross_entropy = tf.nn.softmax_cross_entropy_with_logits(
-            logits=logits, labels=tf.cast(self._answers_one_hot, tf.float32), 
+            logits=logits, labels=tf.cast(self._answers_one_hot, tf.float32),
             name="cross_entropy"
         )
         cross_entropy_mean = tf.reduce_mean(
@@ -261,8 +263,8 @@ class Delayed_EntNet_Sentihood(object):
         assert self._l2_final_layer >= 0
 
         if self._l2_final_layer > 0:
-            final_layer_weights = [ tf.nn.l2_loss(v) for v in trainable_variables
-                                    if 'R:0' in v.name]
+            final_layer_weights = [tf.nn.l2_loss(v) for v in trainable_variables
+                                   if 'R:0' in v.name]
             assert len(final_layer_weights) == 1
             l2_loss_final_layer = self._l2_final_layer * tf.add_n(final_layer_weights)
 
@@ -272,7 +274,7 @@ class Delayed_EntNet_Sentihood(object):
         # gradient pipeline
         grads_and_vars = self._opt.compute_gradients(loss_op)
 
-        grads_and_vars = [(tf.clip_by_norm(g, self._max_grad_norm), v) for g,v in grads_and_vars]
+        grads_and_vars = [(tf.clip_by_norm(g, self._max_grad_norm), v) for g, v in grads_and_vars]
         nil_grads_and_vars = []
         for g, v in grads_and_vars:
             if v.name in self._nil_vars:
@@ -297,7 +299,7 @@ class Delayed_EntNet_Sentihood(object):
 
     def _build_inputs(self):
         self._sentences = tf.placeholder(
-            tf.int32, [None, self._sentence_len], 
+            tf.int32, [None, self._sentence_len],
             name="sentences"
         )
         self._targets = tf.placeholder(
@@ -309,7 +311,7 @@ class Delayed_EntNet_Sentihood(object):
             name="aspects"
         )
         self._answers = tf.placeholder(
-            tf.int32, [None], 
+            tf.int32, [None],
             name="answers"
         )
         self._answers_one_hot = tf.one_hot(
@@ -366,14 +368,14 @@ class Delayed_EntNet_Sentihood(object):
         )
         return embedding * embedding_mask
 
-    def _inference_adj(self, sentences, targets, aspects, 
-                       entnet_input_keep_prob, entnet_output_keep_prob, 
+    def _inference_adj(self, sentences, targets, aspects,
+                       entnet_input_keep_prob, entnet_output_keep_prob,
                        entnet_state_keep_prob, final_layer_keep_prob):
         with tf.variable_scope(self._name):
             masked_embedding = self._mask_embedding(self._embedding)
 
             batch_size = tf.shape(sentences)[0]
-            
+
             targets_emb = tf.nn.embedding_lookup(masked_embedding, targets)
             # [None, entity_size, emb_size]
             targets_emb = tf.reduce_mean(
@@ -482,7 +484,7 @@ class Delayed_EntNet_Sentihood(object):
             last_state_fw, _ = tf.split(
                 value=last_state_fw,
                 num_or_size_splits=[
-                    self._n_keys * self._embedding_size, 
+                    self._n_keys * self._embedding_size,
                     self._n_keys * self._embedding_size,
                 ],
                 axis=1
@@ -490,7 +492,7 @@ class Delayed_EntNet_Sentihood(object):
             last_state_bw, _ = tf.split(
                 value=last_state_bw,
                 num_or_size_splits=[
-                    self._n_keys * self._embedding_size, 
+                    self._n_keys * self._embedding_size,
                     self._n_keys * self._embedding_size,
                 ],
                 axis=1
@@ -506,7 +508,7 @@ class Delayed_EntNet_Sentihood(object):
 
             last_state = last_state_fw + last_state_bw
             # [None, n_keys, emb_size]
-            
+
             asp_att = tf.concat(values=[targets_emb, aspects_emb], axis=2)
             # [None, 1, emb_size * 2]
             W_asp_att = tf.get_variable(
@@ -530,7 +532,7 @@ class Delayed_EntNet_Sentihood(object):
 
             u = tf.reduce_sum(last_state * attention, axis=1)
             # [None, emb_size]
-            
+
             R = tf.get_variable('R', [self._embedding_size, self._answer_size])
             H = tf.get_variable('H', [self._embedding_size, self._embedding_size])
 
@@ -561,8 +563,8 @@ class Delayed_EntNet_Sentihood(object):
         )
         return batches
 
-    def fit(self, sentences, targets, aspects, answers, entnet_input_keep_prob, 
-            entnet_output_keep_prob, entnet_state_keep_prob, 
+    def fit(self, sentences, targets, aspects, answers, entnet_input_keep_prob,
+            entnet_output_keep_prob, entnet_state_keep_prob,
             final_layer_keep_prob, batch_size=None):
         assert len(sentences) == len(targets)
         assert len(sentences) == len(aspects)
@@ -571,17 +573,17 @@ class Delayed_EntNet_Sentihood(object):
         total_loss = 0.
         for start, end in batches:
             feed_dict = {
-                self._sentences: sentences[start:end], 
+                self._sentences: sentences[start:end],
                 self._targets: targets[start:end],
                 self._aspects: aspects[start:end],
-                self._answers: answers[start:end], 
+                self._answers: answers[start:end],
                 self._entnet_input_keep_prob: entnet_input_keep_prob,
                 self._entnet_output_keep_prob: entnet_output_keep_prob,
                 self._entnet_state_keep_prob: entnet_state_keep_prob,
                 self._final_layer_keep_prob: final_layer_keep_prob,
             }
             loss, _ = self._sess.run(
-                [self.loss_op, self.train_op], 
+                [self.loss_op, self.train_op],
                 feed_dict=feed_dict
             )
             total_loss = loss * len(sentences[start:end])
@@ -594,7 +596,7 @@ class Delayed_EntNet_Sentihood(object):
         predictions, predictions_prob = [], []
         for start, end in batches:
             feed_dict = {
-                self._sentences: sentences[start:end], 
+                self._sentences: sentences[start:end],
                 self._targets: targets[start:end],
                 self._aspects: aspects[start:end],
                 self._entnet_input_keep_prob: 1.0,

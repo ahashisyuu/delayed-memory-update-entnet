@@ -15,7 +15,6 @@ import numpy as np
 import sys
 import random
 import logging
-import cPickle as pickle
 
 import pprint
 pp = pprint.PrettyPrinter()
@@ -91,7 +90,7 @@ if __name__ == "__main__":
         max_sentence_len = max(map(lambda x: len(x[1]), data))
         max_sentence_len = min(FLAGS.sentence_len, max_sentence_len)
         logger.info('Max sentence len: %d' % max_sentence_len)
-        max_target_len = 1 # should be one
+        max_target_len = 1  # should be one
         max_aspect_len = max(map(lambda x: len(x), [d[3] for d in data]))
         assert max_aspect_len == 2
         logger.info('Max target size: %d' % max_target_len)

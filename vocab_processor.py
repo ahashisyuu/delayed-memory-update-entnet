@@ -2,6 +2,7 @@ import numpy as np
 import tensorflow as tf
 import collections
 
+
 class LabelVocabulary(tf.contrib.learn.preprocessing.CategoricalVocabulary):
     def __init__(self, support_reverse=True):
         self._mapping = {}
@@ -39,6 +40,7 @@ class LabelVocabulary(tf.contrib.learn.preprocessing.CategoricalVocabulary):
         """
         # no need to trim for label vocab
         return
+
 
 class EmbeddingVocabulary(tf.contrib.learn.preprocessing.CategoricalVocabulary):
     def __init__(self,
@@ -134,6 +136,7 @@ class EmbeddingVocabulary(tf.contrib.learn.preprocessing.CategoricalVocabulary):
         # don't trim embedding vocab
         return
 
+
 class EmbeddingVocabularyProcessor(tf.contrib.learn.preprocessing.VocabularyProcessor):
 
     def __init__(self,
@@ -192,6 +195,7 @@ class EmbeddingVocabularyProcessor(tf.contrib.learn.preprocessing.VocabularyProc
             )
         return output
 
+
 class LabelVocabularyProcessor(tf.contrib.learn.preprocessing.VocabularyProcessor):
 
     def __init__(self,
@@ -211,7 +215,7 @@ class LabelVocabularyProcessor(tf.contrib.learn.preprocessing.VocabularyProcesso
     def fit(self, sentences, unused_y=None):
         # do nothing given that the embeddings have already been
         # initialized in EmbeddingVocabulary
-        for label in sentences:
+        for token in sentences:
             self.vocabulary_.add(token)
         if self.min_frequency > 0:
             self.vocabulary_.trim(self.min_frequency)
